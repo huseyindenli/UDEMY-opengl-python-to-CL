@@ -8,7 +8,9 @@
   :depends-on (:sdl2
 	       :cl-glu
 	       :cl-opengl
-	       :numcl)
+	       :lla
+	       :numcl
+	       :str)
   :serial t
   :components ((:file "package")
                (:file "ogl10")))

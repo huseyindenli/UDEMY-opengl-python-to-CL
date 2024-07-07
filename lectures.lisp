@@ -1,3 +1,10 @@
+
+
+                                                             ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+							     ;; SECTION 3: BASIC GRAPHICS PRIMITIVES ;;
+							     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; ;;; Lecture 10. OpenGL Programming Basics.                                                                                                                          ;;
 ;;                                                                                                                                                                     ;;
@@ -681,3 +688,542 @@
 ;; 		     )															        ;;
 ;; 	      (:quit () t))))))))													        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; ;;; Lecture 20. Polygons									 ;;
+;; 												 ;;
+;; (defvar *screen-width*  1000)								 ;;
+;; (defvar *screen-height* 800)									 ;;
+;; (defvar *points* (make-array 5 :fill-pointer 0 :adjustable t))				 ;;
+;; 												 ;;
+;; (defun init-ortho ()										 ;;
+;;   (gl:matrix-mode :projection)								 ;;
+;;   (gl:load-identity)										 ;;
+;;   (glu:ortho-2d 0 1000 800 0))								 ;;
+;; 												 ;;
+;; ;; (defun plot-polygon ()									 ;;
+;; ;;   (gl:color 0.2 0.2 0.2)									 ;;
+;; ;;   (gl:begin :quad-strip)									 ;;
+;; ;;   (loop for p across *points* do								 ;;
+;; ;;     (gl:vertex (aref p 0) (aref p 1)))							 ;;
+;; ;;   (gl:end))										 ;;
+;; 												 ;;
+;; (defun plot-polygon ()									 ;;
+;;   (gl:color 0.2 0.2 0.2)									 ;;
+;;   (gl:begin :triangles)									 ;;
+;;   (loop for p across *points* do								 ;;
+;;     (gl:vertex (aref p 0) (aref p 1)))							 ;;
+;;   (gl:end)											 ;;
+;;   (gl:color 0.5 0.5 0.5)									 ;;
+;;   (loop for i from 0 to (- (length *points*) 3) by 3 do  					 ;;
+;;     (progn ;(gl:begin :triangles)								 ;;
+;;       (gl:begin :line-loop)									 ;;
+;;       (gl:vertex (aref (aref *points* i) 0)       (aref (aref *points* i) 1))		 ;;
+;;       (gl:vertex (aref (aref *points* (+ i 1)) 0) (aref (aref *points* (+ i 1)) 1))		 ;;
+;;       (gl:vertex (aref (aref *points* (+ i 2)) 0) (aref (aref *points* (+ i 2)) 1))		 ;;
+;;       (gl:end))))										 ;;
+;; 												 ;;
+;; (defun main ()										 ;;
+;;   (sdl2:with-init (:everything)								 ;;
+;;     (sdl2:gl-set-attr :doublebuffer 1)							 ;;
+;;     (sdl2:with-window (screen :w *screen-width* :h *screen-height*				 ;;
+;; 			      :flags '(:opengl)							 ;;
+;; 			      :title "OpenGL in Common Lisp")					 ;;
+;;       (sdl2:with-gl-context (gl-context screen)						 ;;
+;; 	(progn											 ;;
+;; 	  (init-ortho)										 ;;
+;; 	  (gl:line-width 3)									 ;;
+;; 	  (let ((p nil))									 ;;
+;; 	    (sdl2:with-event-loop (:method :poll)						 ;;
+;; 	      (:mousebuttondown () (multiple-value-bind (val1 val2) (sdl2:mouse-state)		 ;;
+;; 				     (progn							 ;;
+;; 				       (setf p (vector val1 val2))				 ;;
+;; 				       (vector-push-extend p *points*))))			 ;;
+;; 	      (:idle ()										 ;;
+;; 		     (gl:clear :color-buffer-bit :depth-buffer-bit)				 ;;
+;; 		     (gl:matrix-mode :modelview)						 ;;
+;; 		     (gl:load-identity)								 ;;
+;; 		     (plot-polygon)								 ;;
+;; 		     (sdl2:gl-swap-window screen)						 ;;
+;; 		     (sleep 0.100))								 ;;
+;; 	      (:quit () t))))))))								 ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+                                                                           ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+									   ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	      ;;
+									   ;; ;; SECTION 4: TURTLE GRAPHICS ;;	      ;;
+									   ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	      ;;
+									   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+                                                                  ;; sudo apt-get install libblas-dev liblapack-dev for :lla library
+
+
+;;; LECTURE 21. PROGRAMMING A TURTLE
+;; (defvar *screen-width*  800)
+;; (defvar *screen-height* 800)
+;; (defvar *ortho-left* -400)
+;; (defvar *ortho-right* 400)
+;; (defvar *ortho-top* -400)
+;; (defvar *ortho-bottom* 400)
+;; (defvar *current-position* #(0 0))
+;; (defvar *direction* #(0 1 0))
+;; (defvar *draw-length* 50)
+
+
+;; (defun map-value (current-min current-max new-min new-max value)
+;;   (let ((current-range (- current-max current-min))
+;; 	(new-range (- new-max new-min)))
+;;     (+ new-min (* new-range (/ (- value current-min)
+;; 			       current-range)))))
+
+;; (defun x-rotation (vector2 theta)
+;;   (let ((new-vector (make-array '(3 3) :initial-contents `((1 0 0)
+;; 							   (0 ,(cos theta) ,(* -1 (sin theta)))
+;; 							   (0 ,(sin theta) ,(cos theta))))))
+;;     (lla:mm new-vector vector2)))
+
+;; (defun y-rotation (vector2 theta)
+;;   (let ((new-vector (make-array '(3 3) :initial-contents `((,(cos theta) 0 ,(sin theta))
+;; 							   (0 1 0)
+;; 							   (,(* -1 (sin theta)) 0 ,(cos theta))))))
+;;     (lla:mm new-vector vector2)))
+
+;; (defun z-rotation (vector2 theta)
+;;   (let ((new-vector (make-array '(3 3) :initial-contents `((,(cos theta) ,(* -1 (sin theta)) 0)
+;; 							   (,(sin theta) ,(cos theta) 0)
+;; 							   (0 0 1)))))
+;;     (lla:mm new-vector vector2)))
+
+;; (defun init-ortho ()
+;;   (gl:matrix-mode :projection)
+;;   (gl:load-identity)
+;;   (glu:ortho-2d *ortho-left* *ortho-right* *ortho-top* *ortho-bottom*))
+
+;; (defun line-to (x y)
+;;   (gl:begin :line-strip)
+;;   (gl:vertex (aref *current-position* 0) (aref *current-position* 1))
+;;   (gl:vertex x y)
+;;   (setf *current-position* (vector x y))
+;;   (gl:end))
+  
+;; (defun reset-turtle ()
+;;   (setf (aref *current-position* 0) 0)
+;;   (setf (aref *current-position* 1) 0)
+;;   (setf *direction* #(0 1 0)))
+
+;; (defun draw-turtle ()
+;;   (forward)
+;;   (forward))
+ 
+;; (defun forward ()
+;;   (let ((new-x (+ (aref *current-position* 0)
+;; 		  (* (aref *direction* 0) *draw-length*)))
+;; 	(new-y (+ (aref *current-position* 1)
+;; 		  (* (aref *direction* 1) *draw-length*))))
+;;     (line-to new-x new-y)))
+
+;; (defun main ()
+;;   (sdl2:with-init (:everything)
+;;     (sdl2:gl-set-attr :doublebuffer 1)
+;;     (sdl2:with-window (screen :w *screen-width* :h *screen-height*
+;; 			      :flags '(:opengl)
+;; 			      :title "Turtle Graphics")
+;;       (sdl2:with-gl-context (gl-context screen)
+;; 	(progn
+;; 	  (init-ortho)
+;; 	  (gl:line-width 5)
+;; 	  (let ((p nil))
+;; 	    (sdl2:with-event-loop (:method :poll)
+;; 	      (:keydown (:keysym keysym)
+;; 			(let ((scancode  (sdl2:scancode-value keysym))
+;; 			      (sym       (sdl2:sym-value keysym))
+;; 			      (mod-value (sdl2:mod-value keysym)))
+;; 			  (declare (ignore sym mod-value))
+;; 			  (cond
+;; 			    ((sdl2:scancode= scancode :scancode-escape) (sdl2:push-event :quit)))))
+;; 	      (:idle ()
+;; 		     (gl:clear :color-buffer-bit :depth-buffer-bit)
+;; 		     (gl:matrix-mode :modelview)
+;; 		     (gl:load-identity)
+;; 		     (gl:begin :points)
+;; 		     (gl:vertex 0 0)
+;; 		     (gl:end)
+;; 		     (reset-turtle)
+;; 		     (draw-turtle)
+;; 		     (sdl2:gl-swap-window screen))
+;; 	      (:quit () t))))))))
+
+;;; LECTURE 22. ROTATING AND MOVING THE TURTLE
+;; (defvar *screen-width*  800)
+;; (defvar *screen-height* 800)
+;; (defvar *ortho-left* -400)
+;; (defvar *ortho-right* 400)
+;; (defvar *ortho-top* -400)
+;; (defvar *ortho-bottom* 400)
+;; (defvar *current-position* #(0 0))
+;; (defvar *direction* #(0 1 0))
+
+
+;; (defun map-value (current-min current-max new-min new-max value)
+;;   (let ((current-range (- current-max current-min))
+;; 	(new-range (- new-max new-min)))
+;;     (+ new-min (* new-range (/ (- value current-min)
+;; 			       current-range)))))
+
+;; (defun x-rotation (vector2 theta)
+;;   (let ((new-vector (make-array '(3 3) :initial-contents `((1 0 0)
+;; 							   (0 ,(cos theta) ,(* -1 (sin theta)))
+;; 							   (0 ,(sin theta) ,(cos theta))))))
+;;     (lla:mm new-vector vector2)))
+
+;; (defun y-rotation (vector2 theta)
+;;   (let ((new-vector (make-array '(3 3) :initial-contents `((,(cos theta) 0 ,(sin theta))
+;; 							   (0 1 0)
+;; 							   (,(* -1 (sin theta)) 0 ,(cos theta))))))
+;;     (lla:mm new-vector vector2)))
+
+;; (defun z-rotation (vector2 theta)
+;;   (let ((new-vector (make-array '(3 3) :initial-contents `((,(cos theta) ,(* -1 (sin theta)) 0)
+;; 							   (,(sin theta) ,(cos theta) 0)
+;; 							   (0 0 1)))))
+;;     (lla:mm new-vector vector2)))
+
+;; (defun init-ortho ()
+;;   (gl:matrix-mode :projection)
+;;   (gl:load-identity)
+;;   (glu:ortho-2d *ortho-left* *ortho-right* *ortho-top* *ortho-bottom*))
+
+;; (defun line-to (x y)
+;;   (gl:begin :line-strip)
+;;   (gl:vertex (aref *current-position* 0) (aref *current-position* 1))
+;;   (gl:vertex x y)
+;;   (setf *current-position* (vector x y))
+;;   (gl:end))
+
+;; (defun move-to (x y)
+;;   (setf *current-position* (vector x y)))
+
+;; (defun reset-turtle ()
+;;   (setf (aref *current-position* 0) 0)
+;;   (setf (aref *current-position* 1) 0)
+;;   (setf *direction* #(0 1 0)))
+
+;; (defun draw-turtle ()
+;;   (loop repeat 20 do  
+;;     (forward 200)
+;;     (rotate 170)))
+ 
+;; (defun forward (draw-length)
+;;   (let ((new-x (+ (aref *current-position* 0)
+;; 		  (* (aref *direction* 0) draw-length)))
+;; 	(new-y (+ (aref *current-position* 1)
+;; 		  (* (aref *direction* 1) draw-length))))
+;;     (line-to new-x new-y)))
+
+;; (defun rotate (angle)
+;;   (setf *direction* (z-rotation *direction* (* pi (/ angle 180.0)))))
+
+;; (defun main ()
+;;   (sdl2:with-init (:everything)
+;;     (sdl2:gl-set-attr :doublebuffer 1)
+;;     (sdl2:with-window (screen :w *screen-width* :h *screen-height*
+;; 			      :flags '(:opengl)
+;; 			      :title "Turtle Graphics")
+;;       (sdl2:with-gl-context (gl-context screen)
+;; 	(progn
+;; 	  (init-ortho)
+;; 	  (gl:line-width 5)
+;; 	  (let ((p nil))
+;; 	    (sdl2:with-event-loop (:method :poll)
+;; 	      (:keydown (:keysym keysym)
+;; 			(let ((scancode  (sdl2:scancode-value keysym))
+;; 			      (sym       (sdl2:sym-value keysym))
+;; 			      (mod-value (sdl2:mod-value keysym)))
+;; 			  (declare (ignore sym mod-value))
+;; 			  (cond
+;; 			    ((sdl2:scancode= scancode :scancode-escape) (sdl2:push-event :quit)))))
+;; 	      (:idle ()
+;; 		     (gl:clear :color-buffer-bit :depth-buffer-bit)
+;; 		     (gl:matrix-mode :modelview)
+;; 		     (gl:load-identity)
+;; 		     (gl:begin :points)
+;; 		     (gl:vertex 0 0)
+;; 		     (gl:end)
+;; 		     (reset-turtle)
+;; 		     (draw-turtle)
+;; 		     (sdl2:gl-swap-window screen))
+;; 	      (:quit () t))))))))
+
+;;LECTURE 23. LINDENMAYER SYSTEM
+;; (defvar *screen-width*  800)
+;; (defvar *screen-height* 800)
+;; (defvar *ortho-left* -400)
+;; (defvar *ortho-right* 400)
+;; (defvar *ortho-top* -400)
+;; (defvar *ortho-bottom* 400)
+;; (defvar *current-position* #(0 0))
+;; (defvar *direction* #(0 1 0))
+
+;; (defvar *axiom* "F")
+;; (defvar *rules* '(("F" . "F[+F]F")))
+;; (defvar *draw-length* 10)
+;; (defvar *angle* 90)
+;; (defvar *stack* (make-array 5 :fill-pointer 0 :adjustable t))
+;; (defvar *rule-run-number* 5)
+;; (defvar *instructions* "")
+
+
+;; (defun find-data (key-string rules)
+;;   (cdr (assoc key-string rules :test #'equal)))
+
+;; (defun replace-all (rules old-str new-str key-string)
+;;   (str:replace-all old-str new-str (find-data key-string rules)))
+
+;; (defun update-rules-generic (old-str new-str key-string)
+;;   (setf (cdr (car *rules*)) (replace-all *rules* old-str new-str key-string)))
+
+;; ;; updates global *rules* variable (destructive)
+;; (defun run-rule (times)
+;;   (loop repeat times do (update-rules-generic *axiom* "F[+F]F" "F"))
+;;   (print "Rule")
+;;   (print *rules*))
+
+;; (defun map-value (current-min current-max new-min new-max value)
+;;   (let ((current-range (- current-max current-min))
+;; 	(new-range (- new-max new-min)))
+;;     (+ new-min (* new-range (/ (- value current-min)
+;; 			       current-range)))))
+
+;; (defun x-rotation (vector2 theta)
+;;   (let ((new-vector (make-array '(3 3)
+;; 				:initial-contents
+;; 				`((1 0 0)
+;; 				  (0 ,(cos theta) ,(* -1 (sin theta)))
+;; 				  (0 ,(sin theta) ,(cos theta))))))
+;;     (lla:mm new-vector vector2)))
+
+;; (defun y-rotation (vector2 theta)
+;;   (let ((new-vector (make-array '(3 3)
+;; 				:initial-contents
+;; 				`((,(cos theta) 0 ,(sin theta))
+;; 				  (0 1 0)
+;; 				  (,(* -1 (sin theta)) 0 ,(cos theta))))))
+;;     (lla:mm new-vector vector2)))
+
+;; (defun z-rotation (vector2 theta)
+;;   (let ((new-vector (make-array '(3 3)
+;; 				:initial-contents
+;; 				`((,(cos theta) ,(* -1 (sin theta)) 0)
+;; 				  (,(sin theta) ,(cos theta) 0)
+;; 				  (0 0 1)))))
+;;     (lla:mm new-vector vector2)))
+
+;; (defun init-ortho ()
+;;   (gl:matrix-mode :projection)
+;;   (gl:load-identity)
+;;   (glu:ortho-2d *ortho-left* *ortho-right* *ortho-top* *ortho-bottom*))
+
+;; (defun line-to (x y)
+;;   (gl:begin :line-strip)
+;;   (gl:vertex (aref *current-position* 0) (aref *current-position* 1))
+;;   (gl:vertex x y)
+;;   (setf *current-position* (vector x y))
+;;   (gl:end))
+
+;; (defun move-to (x y)
+;;   (setf *current-position* (vector x y)))
+
+;; (defun reset-turtle ()
+;;   (setf (aref *current-position* 0) 0)
+;;   (setf (aref *current-position* 1) 0)
+;;   (setf *direction* #(0 1 0)))
+
+;; (defun draw-turtle ()
+;;   (loop repeat 20 do  
+;;     (forward 200)
+;;     (rotate 170)))
+ 
+;; (defun forward (draw-length)
+;;   (let ((new-x (+ (aref *current-position* 0)
+;; 		  (* (aref *direction* 0) draw-length)))
+;; 	(new-y (+ (aref *current-position* 1)
+;; 		  (* (aref *direction* 1) draw-length))))
+;;     (line-to new-x new-y)))
+
+;; (defun rotate (angle)
+;;   (setf *direction* (z-rotation *direction* (* pi (/ angle 180.0)))))
+
+;; (defun main ()
+;;   (sdl2:with-init (:everything)
+;;     (sdl2:gl-set-attr :doublebuffer 1)
+;;     (sdl2:with-window (screen :w *screen-width* :h *screen-height*
+;; 			      :flags '(:opengl)
+;; 			      :title "Turtle Graphics")
+;;       (sdl2:with-gl-context (gl-context screen)
+;; 	(progn
+;; 	  (init-ortho)
+;; 	  (gl:line-width 5)
+;; 	  (run-rule *rule-run-number*)
+;; 	  (sdl2:with-event-loop (:method :poll)
+;; 	    (:keydown (:keysym keysym)
+;; 		      (let ((scancode  (sdl2:scancode-value keysym))
+;; 			    (sym       (sdl2:sym-value keysym))
+;; 			    (mod-value (sdl2:mod-value keysym)))
+;; 			(declare (ignore sym mod-value))
+;; 			(cond
+;; 			  ((sdl2:scancode= scancode :scancode-escape)
+;; 			   (sdl2:push-event :quit)))))
+;; 	    (:idle ()
+;; 		   (gl:clear :color-buffer-bit :depth-buffer-bit)
+;; 		   (gl:matrix-mode :modelview)
+;; 		   (gl:load-identity)
+;; 		   (gl:begin :points)
+;; 		   (gl:vertex 0 0)
+;; 		   (gl:end)
+;; 		   (reset-turtle)
+;; 		   (draw-turtle)
+;; 		   (sdl2:gl-swap-window screen))
+;; 	    (:quit () t)))))))
+
+;;; SIMPLIFIED VERSION OF LECTURE 24. DRAWING AN L-SYSTEM.
+;; (defvar *screen-width*  800)
+;; (defvar *screen-height* 800)
+;; (defvar *ortho-left* -400)
+;; (defvar *ortho-right* 400)
+;; (defvar *ortho-top* 0)
+;; (defvar *ortho-bottom* 800)
+;; (defvar *current-position* #(0 0))
+;; (defvar *direction* #(0 1 0))
+
+;; (defvar *instructions* "FF[+F][--FF][-F+F]")
+
+;; (defvar *axiom* "F")
+;; (defvar *rules* `(("F" . ,*instructions*)))
+;; (defvar *draw-length* 10)
+;; (defvar *angle* 25)
+;; (defvar *stack* (make-array 5 :fill-pointer 0 :adjustable t))
+;; (defvar *rule-run-number* 5)
+
+
+;; (defun find-data (key-string rules)
+;;   (cdr (assoc key-string rules :test #'equal)))
+
+;; (defun replace-all (rules old-str new-str key-string)
+;;   (str:replace-all old-str new-str (find-data key-string rules)))
+
+;; (defun update-rules-generic (old-str new-str key-string)
+;;   (setf (cdr (car *rules*)) (replace-all *rules* old-str new-str key-string)))
+
+;; ;; updates global *rules* variable (destructive)
+;; (defun run-rule (times)
+;;   (loop repeat (- times 1) do (update-rules-generic *axiom* *instructions* *axiom*))
+;;   (print "Rule")
+;;   (print *rules*))
+
+;; (defun map-value (current-min current-max new-min new-max value)
+;;   (let ((current-range (- current-max current-min))
+;; 	(new-range (- new-max new-min)))
+;;     (+ new-min (* new-range (/ (- value current-min)
+;; 			       current-range)))))
+
+;; (defun x-rotation (vector2 theta)
+;;   (let ((new-vector (make-array '(3 3)
+;; 				:initial-contents
+;; 				`((1 0 0)
+;; 				  (0 ,(cos theta) ,(* -1 (sin theta)))
+;; 				  (0 ,(sin theta) ,(cos theta))))))
+;;     (lla:mm new-vector vector2)))
+
+;; (defun y-rotation (vector2 theta)
+;;   (let ((new-vector (make-array '(3 3)
+;; 				:initial-contents
+;; 				`((,(cos theta) 0 ,(sin theta))
+;; 				  (0 1 0)
+;; 				  (,(* -1 (sin theta)) 0 ,(cos theta))))))
+;;     (lla:mm new-vector vector2)))
+
+;; (defun z-rotation (vector2 theta)
+;;   (let ((new-vector (make-array '(3 3)
+;; 				:initial-contents
+;; 				`((,(cos theta) ,(* -1 (sin theta)) 0)
+;; 				  (,(sin theta) ,(cos theta) 0)
+;; 				  (0 0 1)))))
+;;     (lla:mm new-vector vector2)))
+
+;; (defun init-ortho ()
+;;   (gl:matrix-mode :projection)
+;;   (gl:load-identity)
+;;   (glu:ortho-2d *ortho-left* *ortho-right* *ortho-top* *ortho-bottom*))
+
+;; (defun line-to (x y)
+;;   (gl:begin :line-strip)
+;;   (gl:vertex (aref *current-position* 0) (aref *current-position* 1))
+;;   (gl:vertex x y)
+;;   (setf *current-position* (vector x y))
+;;   (gl:end))
+
+;; (defun move-to (pos)
+;;   (setf *current-position* (vector (aref pos 0) (aref pos 1))))
+
+;; (defun reset-turtle ()
+;;   (setf (aref *current-position* 0) 0)
+;;   (setf (aref *current-position* 1) 0)
+;;   (setf *direction* #(0 1 0)))
+
+;; (defun do-draw-turtle (i)
+;;   (cond ((equal i #\F) (forward *draw-length*))
+;; 	((equal i #\+) (rotate *angle*))
+;; 	((equal i #\-) (rotate (* -1 *angle*)))
+;; 	((equal i #\[) (progn (push *direction* *stack*)
+;; 			      (push *current-position* *stack*)))
+;; 	((equal i #\]) (progn (move-to (pop *stack*))
+;; 			      (setf *direction* (pop *stack*))))
+;; 	(t (rotate 0))))
+
+;; (defun draw-turtle ()
+;;   (loop for i across (find-data "F" *rules*) do (do-draw-turtle i)))
+ 
+;; (defun forward (draw-length)
+;;   (let ((new-x (+ (aref *current-position* 0)
+;; 		  (* (aref *direction* 0) draw-length)))
+;; 	(new-y (+ (aref *current-position* 1)
+;; 		  (* (aref *direction* 1) draw-length))))
+;;     (line-to new-x new-y)))
+
+;; (defun rotate (angle)
+;;   (setf *direction* (z-rotation *direction* (* pi (/ angle 180.0)))))
+
+;; (defun main ()
+;;   (sdl2:with-init (:everything)
+;;     (sdl2:gl-set-attr :doublebuffer 1)
+;;     (sdl2:with-window (screen :w *screen-width* :h *screen-height*
+;; 			      :flags '(:opengl)
+;; 			      :title "Turtle Graphics")
+;;       (sdl2:with-gl-context (gl-context screen)
+;; 	(progn
+;; 	  (init-ortho)
+;; 	  (gl:line-width 1)
+;; 	  (run-rule *rule-run-number*)
+;; 	  (sdl2:with-event-loop (:method :poll)
+;; 	    (:keydown (:keysym keysym)
+;; 		      (let ((scancode  (sdl2:scancode-value keysym))
+;; 			    (sym       (sdl2:sym-value keysym))
+;; 			    (mod-value (sdl2:mod-value keysym)))
+;; 			(declare (ignore sym mod-value))
+;; 			(cond
+;; 			  ((sdl2:scancode= scancode :scancode-escape)
+;; 			   (sdl2:push-event :quit)))))
+;; 	    (:idle ()
+;; 		   (gl:clear :color-buffer-bit :depth-buffer-bit)
+;; 		   (gl:matrix-mode :modelview)
+;; 		   (gl:load-identity)
+;; 		   (gl:begin :points)
+;; 		   (gl:vertex 0 0)
+;; 		   (gl:end)
+;; 		   (reset-turtle)
+;; 		   (draw-turtle)
+;; 		   (sdl2:gl-swap-window screen))
+;; 	    (:quit () t)))))))
+
+;;; LECTURE 25 and 26. I think we do not need more fractals.
