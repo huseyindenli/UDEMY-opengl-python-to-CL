@@ -10,7 +10,8 @@
 	       :cl-opengl
 	       :lla
 	       :numcl
-	       :str)
+	       :str
+	       :parse-float)
   :serial t
   :components ((:file "package")
                (:file "ogl10")))

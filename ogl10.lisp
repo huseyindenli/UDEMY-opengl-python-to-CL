@@ -1,127 +1,205 @@
 (in-package #:ogl10)
 
-
-(defvar *screen-width*  800)
+(defvar *screen-width*  1000)
 (defvar *screen-height* 800)
-(defvar *ortho-left* -400)
-(defvar *ortho-right* 400)
-(defvar *ortho-top* 0)
-(defvar *ortho-bottom* 800)
-(defvar *current-position* #(0 0))
-(defvar *direction* #(0 1 0))
+(defvar *background-color* '(0 0 0 1))
+(defvar *drawing-color* '(1 1 1 1))
 
-(defvar *instructions* "FF[+F][--FF][-F+F]")
+;; -------------------------------- ENGINE/MESH -------------------------------------
 
-(defvar *axiom* "F")
-(defvar *rules* `(("F" . ,*instructions*)))
-(defvar *draw-length* 10)
-(defvar *angle* 25)
-(defvar *stack* (make-array 5 :fill-pointer 0 :adjustable t))
-(defvar *rule-run-number* 5)
+(defclass mesh ()
+  ((vertices :initform #((0.5 -0.5 0.5)
+			 (-0.5 -0.5 0.5)
+			 (0.5 0.5 0.5)
+			 (-0.5 0.5 0.5)
+			 (0.5 0.5 -0.5)
+			 (-0.5 0.5 -0.5))
+	     :accessor vertices
+	     :type (simple-vector 6)
+	     :allocation :class)
+   (triangles :initform #(0 2 3 0 3 1)
+	      :accessor triangles
+	      :type (simple-vector 6)
+	      :allocation :class)
+   (draw-type :initform :line-loop
+	      :initarg :draw-type
+	      :accessor draw-type
+	      :type keyword
+	      :allocation :class)))
 
+(defgeneric draw (mesh))
 
-(defun find-data (key-string rules)
-  (cdr (assoc key-string rules :test #'equal)))
+(defmethod draw ((m mesh))
+  (do ((i 0 (+ i 1)))
+      ((> i (- (length (vertices m)) 3)) 'return-value)
+    (gl:begin (draw-type m))
+    (gl:vertex  (first  (aref (vertices m) (aref (triangles m) i)))
+		(second (aref (vertices m) (aref (triangles m) i)))
+		(third  (aref (vertices m) (aref (triangles m) i))))
+    (gl:vertex  (first  (aref (vertices m) (aref (triangles m) (+ i 1))))
+		(second (aref (vertices m) (aref (triangles m) (+ i 1))))
+		(third  (aref (vertices m) (aref (triangles m) (+ i 1)))))
+    (gl:vertex  (first  (aref (vertices m) (aref (triangles m) (+ i 2))))
+		(second (aref (vertices m) (aref (triangles m) (+ i 2))))
+		(third  (aref (vertices m) (aref (triangles m) (+ i 2)))))
+    (gl:end)))
 
-(defun replace-all (rules old-str new-str key-string)
-  (str:replace-all old-str new-str (find-data key-string rules)))
+(defclass cube (mesh)
+  ((vertices :initform #((0.5 -0.5 0.5)
+			 (-0.5 -0.5 0.5)
+			 (0.5 0.5 0.5)
+			 (-0.5 0.5 0.5)
+			 (0.5 0.5 -0.5)
+			 (-0.5 0.5 -0.5)
+			 (0.5 -0.5 -0.5)
+			 (-0.5 -0.5 -0.5)
+			 (0.5 0.5 0.5)
+			 (-0.5 0.5 0.5)
+			 (0.5 0.5 -0.5)
+			 (-0.5 0.5 -0.5)
+			 (0.5 -0.5 -0.5)
+			 (0.5 -0.5 0.5)
+			 (-0.5 -0.5 0.5)
+			 (-0.5 -0.5 -0.5)
+			 (-0.5 -0.5 0.5)
+			 (-0.5 0.5 0.5)
+			 (-0.5 0.5 -0.5)
+			 (-0.5 -0.5 -0.5)
+			 (0.5 -0.5 -0.5)
+			 (0.5 0.5 -0.5)
+			 (0.5 0.5 0.5)
+			 (0.5 -0.5 0.5))
+	     :accessor vertices
+	     :type (simple-vector 24)
+	     :allocation :class)
+   (triangles :initform #(0 2 3 0 3 1 8 4 5 8 5 9 10 6 7 10 7 11 12 13 14
+		          12 14 15 16 17 18 16 18 19 20 21 22 20 22 23)
+	      :accessor triangles
+	      :type (simple-vector 36)
+	      :allocation :class)
+   (draw-type :initarg :draw-type
+	      :accessor draw-type
+	      :type keyword
+	      :allocation :class)))
 
-(defun update-rules-generic (old-str new-str key-string)
-  (setf (cdr (car *rules*)) (replace-all *rules* old-str new-str key-string)))
+(defclass load-mesh (mesh)
+  ((vertices :initform (make-array 5 :fill-pointer 0 :adjustable t)
+	     :initarg :vertices
+	     :accessor vertices
+	     :allocation :instance)
+   (triangles :initform (make-array 5 :fill-pointer 0 :adjustable t)
+	      :initarg :triangles
+	      :accessor triangles
+	      :allocation :instance)
+   (filename :initarg :filename
+	     :accessor filename
+	     :type string
+	     :allocation :instance)
+   (draw-type :initform :line-loop
+	      :initarg :draw-type
+	      :type keyword
+	      :allocation :instance)))
 
-;; updates global *rules* variable (destructive)
-(defun run-rule (times)
-  (loop repeat (- times 1) do (update-rules-generic *axiom* *instructions* *axiom*))
-  (print "Rule")
-  (print *rules*))
+(defmethod draw ((m load-mesh))
+  (do ((i 0 (+ i 1)))
+      ((> i (- (length (vertices m)) 3)) 'return-value)
+    (gl:begin (draw-type m))
+    (gl:vertex  (first  (aref (vertices m) (aref (triangles m) i)))
+		(second (aref (vertices m) (aref (triangles m) i)))
+		(third  (aref (vertices m) (aref (triangles m) i))))
+    (gl:vertex  (first  (aref (vertices m) (aref (triangles m) (+ i 1))))
+		(second (aref (vertices m) (aref (triangles m) (+ i 1))))
+		(third  (aref (vertices m) (aref (triangles m) (+ i 1)))))
+    (gl:vertex  (first  (aref (vertices m) (aref (triangles m) (+ i 2))))
+		(second (aref (vertices m) (aref (triangles m) (+ i 2))))
+		(third  (aref (vertices m) (aref (triangles m) (+ i 2)))))
+    (gl:end)))
 
-(defun map-value (current-min current-max new-min new-max value)
-  (let ((current-range (- current-max current-min))
-	(new-range (- new-max new-min)))
-    (+ new-min (* new-range (/ (- value current-min)
-			       current-range)))))
+(defgeneric load-drawing (load-mesh))
 
-(defun x-rotation (vector2 theta)
-  (let ((new-vector (make-array '(3 3)
-				:initial-contents
-				`((1 0 0)
-				  (0 ,(cos theta) ,(* -1 (sin theta)))
-				  (0 ,(sin theta) ,(cos theta))))))
-    (lla:mm new-vector vector2)))
+(defmethod load-drawing ((m load-mesh))
+  (with-open-file (stream (filename m))
+    (do ((line (read-line stream nil)
+	       (read-line stream nil)))
+	((null line))
 
-(defun y-rotation (vector2 theta)
-  (let ((new-vector (make-array '(3 3)
-				:initial-contents
-				`((,(cos theta) 0 ,(sin theta))
-				  (0 1 0)
-				  (,(* -1 (sin theta)) 0 ,(cos theta))))))
-    (lla:mm new-vector vector2)))
+      (if (equal (str:substring 0 2 line)
+		 "v ")
+	  (multiple-value-bind (vx vy vz)
+	    (values (parse-float (second (str:words line)))
+	            (parse-float (third (str:words line))) 
+	            (parse-float (fourth (str:words line))))
+	    (vector-push-extend `(,vx ,vy ,vz)
+				(vertices m))))
+      
+      (if (equal (str:substring 0 2 line)
+		 "f ")
+	  (multiple-value-bind (t1 t2 t3)
+	      (multiple-value-bind (vx vy vz)
+		(values (parse-integer (first (str:split "/" (second (str:words line)))))
+		        (parse-integer (first (str:split "/" (third (str:words line))))) 
+		        (parse-integer (first (str:split "/" (fourth (str:words line))))))
+		
+		(values vx vy vz))
+	    ;; (vector-push-extend (make-array 5 :fill-pointer 0 :adjustable t) (vector-push-extend ...)
+	    ;; oburturlusu olan #(#()) verir.
+	    (vector-push-extend t1
+				(triangles m))
+	    (vector-push-extend t2
+				(triangles m))
+	    (vector-push-extend t3
+				(triangles m)))))))
 
-(defun z-rotation (vector2 theta)
-  (let ((new-vector (make-array '(3 3)
-				:initial-contents
-				`((,(cos theta) ,(* -1 (sin theta)) 0)
-				  (,(sin theta) ,(cos theta) 0)
-				  (0 0 1)))))
-    (lla:mm new-vector vector2)))
+(defmethod print-object ((obj load-mesh) stream)
+  (print-unreadable-object (obj stream :type t)
+    (with-accessors ((vertices vertices)
+		     (triangles triangles))
+	obj
+      (format stream "~% TRIANGLES: ~a ~% VERTICES: ~a ~%" triangles vertices))))
 
-(defun init-ortho ()
+;; -------------------------------- ENGINE/MESH -------------------------------------
+
+;; (defvar *cube* (make-instance 'cube :draw-type :line-loop)) ;; :line-loop or :polygon
+(defvar *mesh* (make-instance 'load-mesh :filename "granny.obj" :draw-type :line-loop))
+
+(load-drawing *mesh*)
+
+(defun initialize ()
+  (gl:clear-color (first  *background-color*)
+		  (second *background-color*)
+		  (third  *background-color*)
+		  (fourth *background-color*))
+  (gl:color (first  *drawing-color*)
+	    (second *drawing-color*)
+	    (third  *drawing-color*)
+	    (fourth *drawing-color*))
   (gl:matrix-mode :projection)
   (gl:load-identity)
-  (glu:ortho-2d *ortho-left* *ortho-right* *ortho-top* *ortho-bottom*))
+  (glu:perspective 60 (/ *screen-width* *screen-height*) 0.1 1000.0)
+  (gl:matrix-mode :modelview)
+  (gl:translate 0 0 -5)
+  (gl:load-identity)
+  (gl:viewport 0 0 *screen-width* *screen-height*) 
+  (gl:enable :depth-test)
+  (gl:translate 0 -100 -200)) ;; change x,y and z values -3 for different values and check the result.
 
-(defun line-to (x y)
-  (gl:begin :line-strip)
-  (gl:vertex (aref *current-position* 0) (aref *current-position* 1))
-  (gl:vertex x y)
-  (setf *current-position* (vector x y))
-  (gl:end))
-
-;; (defun move-to (x y)
-;;   (setf *current-position* (vector x y)))
-
-(defun move-to (pos)
-  (setf *current-position* (vector (aref pos 0) (aref pos 1))))
-
-(defun reset-turtle ()
-  (setf (aref *current-position* 0) 0)
-  (setf (aref *current-position* 1) 0)
-  (setf *direction* #(0 1 0)))
-
-(defun do-draw-turtle (i)
-  (cond ((equal i #\F) (forward *draw-length*))
-	((equal i #\+) (rotate *angle*))
-	((equal i #\-) (rotate (* -1 *angle*)))
-	((equal i #\[) (progn (push *direction* *stack*)
-			      (push *current-position* *stack*)))
-	((equal i #\]) (progn (move-to (pop *stack*))
-			      (setf *direction* (pop *stack*))))
-	(t (rotate 0))))
-
-(defun draw-turtle ()
-  (loop for i across (find-data "F" *rules*) do (do-draw-turtle i)))
- 
-(defun forward (draw-length)
-  (let ((new-x (+ (aref *current-position* 0)
-		  (* (aref *direction* 0) draw-length)))
-	(new-y (+ (aref *current-position* 1)
-		  (* (aref *direction* 1) draw-length))))
-    (line-to new-x new-y)))
-
-(defun rotate (angle)
-  (setf *direction* (z-rotation *direction* (* pi (/ angle 180.0)))))
+(defun display ()
+  (gl:clear :color-buffer-bit :depth-buffer-bit)
+  (gl:rotate 1 10 0 1)
+  (gl:push-matrix)
+  ;; (draw *cube*) ;; LECTURE 29 the only diffference between Lec 29 and 30
+  (draw *mesh*)    ;; LECTURE 30 the only diffference between Lec 29 and 30
+  (gl:pop-matrix))
 
 (defun main ()
   (sdl2:with-init (:everything)
     (sdl2:gl-set-attr :doublebuffer 1)
     (sdl2:with-window (screen :w *screen-width* :h *screen-height*
 			      :flags '(:opengl)
-			      :title "Turtle Graphics")
+			      :title "OpenGL in Common Lisp")
       (sdl2:with-gl-context (gl-context screen)
 	(progn
-	  (init-ortho)
-	  (gl:line-width 1)
-	  (run-rule *rule-run-number*)
+	  (initialize)
 	  (sdl2:with-event-loop (:method :poll)
 	    (:keydown (:keysym keysym)
 		      (let ((scancode  (sdl2:scancode-value keysym))
@@ -132,14 +210,7 @@
 			  ((sdl2:scancode= scancode :scancode-escape)
 			   (sdl2:push-event :quit)))))
 	    (:idle ()
-		   (gl:clear :color-buffer-bit :depth-buffer-bit)
-		   (gl:matrix-mode :modelview)
-		   (gl:load-identity)
-		   (gl:begin :points)
-		   (gl:vertex 0 0)
-		   (gl:end)
-		   (reset-turtle)
-		   (draw-turtle)
-		   (sdl2:gl-swap-window screen))
+		   (display)
+		   (sdl2:gl-swap-window screen)
+		   (sleep 0.100))
 	    (:quit () t)))))))
-
