@@ -11,6 +11,7 @@
 	       :lla
 	       :numcl
 	       :str
+	       ;; :cl-wavefront
 	       :parse-float)
   :serial t
   :components ((:file "package")

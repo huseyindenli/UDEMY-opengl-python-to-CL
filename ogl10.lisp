@@ -8,16 +8,11 @@
 ;; -------------------------------- ENGINE/MESH -------------------------------------
 
 (defclass mesh ()
-  ((vertices :initform #((0.5 -0.5 0.5)
-			 (-0.5 -0.5 0.5)
-			 (0.5 0.5 0.5)
-			 (-0.5 0.5 0.5)
-			 (0.5 0.5 -0.5)
-			 (-0.5 0.5 -0.5))
-	     :accessor vertices
-	     :type (simple-vector 6)
-	     :allocation :class)
-   (triangles :initform #(0 2 3 0 3 1)
+  ((vertices ; we do not need initform when we were loading vertex data from the file.  
+              :accessor vertices
+              :type (simple-vector 6)
+              :allocation :class)
+   (triangles ; we do not need initform when we were loading vertex data from the file.   
 	      :accessor triangles
 	      :type (simple-vector 6)
 	      :allocation :class)
@@ -43,44 +38,6 @@
 		(second (aref (vertices m) (aref (triangles m) (+ i 2))))
 		(third  (aref (vertices m) (aref (triangles m) (+ i 2)))))
     (gl:end)))
-
-(defclass cube (mesh)
-  ((vertices :initform #((0.5 -0.5 0.5)
-			 (-0.5 -0.5 0.5)
-			 (0.5 0.5 0.5)
-			 (-0.5 0.5 0.5)
-			 (0.5 0.5 -0.5)
-			 (-0.5 0.5 -0.5)
-			 (0.5 -0.5 -0.5)
-			 (-0.5 -0.5 -0.5)
-			 (0.5 0.5 0.5)
-			 (-0.5 0.5 0.5)
-			 (0.5 0.5 -0.5)
-			 (-0.5 0.5 -0.5)
-			 (0.5 -0.5 -0.5)
-			 (0.5 -0.5 0.5)
-			 (-0.5 -0.5 0.5)
-			 (-0.5 -0.5 -0.5)
-			 (-0.5 -0.5 0.5)
-			 (-0.5 0.5 0.5)
-			 (-0.5 0.5 -0.5)
-			 (-0.5 -0.5 -0.5)
-			 (0.5 -0.5 -0.5)
-			 (0.5 0.5 -0.5)
-			 (0.5 0.5 0.5)
-			 (0.5 -0.5 0.5))
-	     :accessor vertices
-	     :type (simple-vector 24)
-	     :allocation :class)
-   (triangles :initform #(0 2 3 0 3 1 8 4 5 8 5 9 10 6 7 10 7 11 12 13 14
-		          12 14 15 16 17 18 16 18 19 20 21 22 20 22 23)
-	      :accessor triangles
-	      :type (simple-vector 36)
-	      :allocation :class)
-   (draw-type :initarg :draw-type
-	      :accessor draw-type
-	      :type keyword
-	      :allocation :class)))
 
 (defclass load-mesh (mesh)
   ((vertices :initform (make-array 5 :fill-pointer 0 :adjustable t)
@@ -122,33 +79,23 @@
     (do ((line (read-line stream nil)
 	       (read-line stream nil)))
 	((null line))
-
-      (if (equal (str:substring 0 2 line)
-		 "v ")
+      (if (equal (str:substring 0 2 line) "v ")
 	  (multiple-value-bind (vx vy vz)
 	    (values (parse-float (second (str:words line)))
 	            (parse-float (third (str:words line))) 
 	            (parse-float (fourth (str:words line))))
 	    (vector-push-extend `(,vx ,vy ,vz)
 				(vertices m))))
-      
-      (if (equal (str:substring 0 2 line)
-		 "f ")
+      (if (equal (str:substring 0 2 line) "f ")
 	  (multiple-value-bind (t1 t2 t3)
 	      (multiple-value-bind (vx vy vz)
 		(values (parse-integer (first (str:split "/" (second (str:words line)))))
 		        (parse-integer (first (str:split "/" (third (str:words line))))) 
 		        (parse-integer (first (str:split "/" (fourth (str:words line))))))
-		
 		(values vx vy vz))
-	    ;; (vector-push-extend (make-array 5 :fill-pointer 0 :adjustable t) (vector-push-extend ...)
-	    ;; oburturlusu olan #(#()) verir.
-	    (vector-push-extend t1
-				(triangles m))
-	    (vector-push-extend t2
-				(triangles m))
-	    (vector-push-extend t3
-				(triangles m)))))))
+	    (vector-push-extend t1 (triangles m))
+	    (vector-push-extend t2 (triangles m))
+	    (vector-push-extend t3 (triangles m)))))))
 
 (defmethod print-object ((obj load-mesh) stream)
   (print-unreadable-object (obj stream :type t)
@@ -159,8 +106,10 @@
 
 ;; -------------------------------- ENGINE/MESH -------------------------------------
 
-;; (defvar *cube* (make-instance 'cube :draw-type :line-loop)) ;; :line-loop or :polygon
-(defvar *mesh* (make-instance 'load-mesh :filename "granny.obj" :draw-type :line-loop))
+(defvar *mesh* (make-instance 'load-mesh :filename "cube.obj" :draw-type :line-loop))
+;; (defvar *mesh* (make-instance 'load-mesh :filename "teapot.obj" :draw-type :line-loop))
+;; (defvar *test*  (org.shirakumo.fraf.wavefront:parse #p"~/quicklisp/local-projects/ogl10/monkey.obj"))
+
 
 (load-drawing *mesh*)
 
@@ -175,20 +124,27 @@
 	    (fourth *drawing-color*))
   (gl:matrix-mode :projection)
   (gl:load-identity)
-  (glu:perspective 60 (/ *screen-width* *screen-height*) 0.1 1000.0)
+  (glu:perspective 60 (/ *screen-width* *screen-height*) 0.1 500.0))
+
+(defvar *eye* (make-array 3 :initial-contents '(0 0 1)))
+
+(defun init-camera ()  
   (gl:matrix-mode :modelview)
-  (gl:translate 0 0 -5)
   (gl:load-identity)
   (gl:viewport 0 0 *screen-width* *screen-height*) 
   (gl:enable :depth-test)
-  (gl:translate 0 -100 -200)) ;; change x,y and z values -3 for different values and check the result.
+  (glu:look-at (aref *eye* 0) (aref *eye* 1) (aref *eye* 2) 0 0 0 0 1 0))
 
 (defun display ()
   (gl:clear :color-buffer-bit :depth-buffer-bit)
-  (gl:rotate 1 10 0 1)
+  (init-camera)
   (gl:push-matrix)
-  ;; (draw *cube*) ;; LECTURE 29 the only diffference between Lec 29 and 30
-  (draw *mesh*)    ;; LECTURE 30 the only diffference between Lec 29 and 30
+  (gl:translate 0 0 -4)
+  (draw *mesh*)
+  ;; (gl:load-identity)
+  (gl:scale 0.5 0.5 0.5)
+  (gl:translate -7 -5 -5)
+  (draw *mesh*)
   (gl:pop-matrix))
 
 (defun main ()
@@ -207,10 +163,16 @@
 			    (mod-value (sdl2:mod-value keysym)))
 			(declare (ignore sym mod-value))
 			(cond
-			  ((sdl2:scancode= scancode :scancode-escape)
-			   (sdl2:push-event :quit)))))
+			  ((sdl2:scancode= scancode :scancode-escape) (sdl2:push-event :quit))
+			  ((sdl2:scancode= scancode :scancode-down) (incf (aref *eye* 2)))
+			  ((sdl2:scancode= scancode :scancode-up) (decf (aref *eye* 2)))
+			  ((sdl2:scancode= scancode :scancode-left) (decf (aref *eye* 0)))
+			  ((sdl2:scancode= scancode :scancode-right) (incf (aref *eye* 0)))
+			  ((sdl2:scancode= scancode :scancode-q) (incf (aref *eye* 1)))
+			  ((sdl2:scancode= scancode :scancode-w) (decf (aref *eye* 1))))))
 	    (:idle ()
 		   (display)
 		   (sdl2:gl-swap-window screen)
-		   (sleep 0.100))
+		   ;; (sleep 0.100)
+		   )
 	    (:quit () t)))))))
