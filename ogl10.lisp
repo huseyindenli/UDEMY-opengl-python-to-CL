@@ -104,12 +104,51 @@
 	obj
       (format stream "~% TRIANGLES: ~a ~% VERTICES: ~a ~%" triangles vertices))))
 
+(defvar *camera*)
+(defclass camera ()
+  ((eye     :initform (vector 0 0 0)
+	    :accessor eye)
+   (up      :initform (vector 0 1 0)
+	    :accessor up)
+   (right   :initform (vector 1 0 0)
+	    :accessor right)
+   (forward :initform (vector 0 0 1)
+	    :accessor forward)
+   (look    :accessor look)))
+
+(defmethod initialize-instance :after ((obj camera) &key)
+  (with-accessors ((eye eye) (forward forward) (look look)) obj
+    (setf (look obj) (vector (+ (aref eye 0) (aref forward 0))
+			     (+ (aref eye 1) (aref forward 1))
+			     (+ (aref eye 2) (aref forward 2))))))
+
+(defmethod update-data ((c camera) arg)
+  (cond ((equal arg :down)  (progn (incf (aref (eye c) 0) (+ (aref (eye c) 0) (aref (forward c) 0)))
+				   (incf (aref (eye c) 1) (+ (aref (eye c) 1) (aref (forward c) 1)))
+				   (incf (aref (eye c) 2) (+ (aref (eye c) 2) (aref (forward c) 2)))))
+	((equal arg :up)    (progn (incf (aref (eye c) 0) (- (aref (eye c) 0) (aref (forward c) 0)))
+				   (incf (aref (eye c) 1) (- (aref (eye c) 1) (aref (forward c) 1)))
+				   (incf (aref (eye c) 2) (- (aref (eye c) 2) (aref (forward c) 2)))))
+	((equal arg :left)  (progn (incf (aref (eye c) 0) (+ (aref (eye c) 0) (aref (right c) 0)))
+				   (incf (aref (eye c) 1) (+ (aref (eye c) 1) (aref (right c) 1)))
+				   (incf (aref (eye c) 2) (+ (aref (eye c) 2) (aref (right c) 2)))))
+	((equal arg :right) (progn (decf (aref (eye c) 0) (+ (aref (eye c) 0) (aref (right c) 0)))
+				   (decf (aref (eye c) 1) (+ (aref (eye c) 1) (aref (right c) 1)))
+				   (decf (aref (eye c) 2) (+ (aref (eye c) 2) (aref (right c) 2))))))
+  
+  (setf (aref (look c) 0) (+ (aref (eye c) 0) (aref (forward c) 0)))
+  (setf (aref (look c) 1) (+ (aref (eye c) 1) (aref (forward c) 1)))
+  (setf (aref (look c) 2) (+ (aref (eye c) 2) (aref (forward c) 2))))
+
+(defmethod update-camera ((c camera))  
+  (glu:look-at (aref (eye c)  0) (aref (eye c)  1) (aref (eye c)  2)
+	       (aref (look c) 0) (aref (look c) 1) (aref (look c) 2)
+	       (aref (up c)   0) (aref (up c)   1) (aref (up c)   2)))
+
 ;; -------------------------------- ENGINE/MESH -------------------------------------
 
 (defvar *mesh* (make-instance 'load-mesh :filename "cube.obj" :draw-type :line-loop))
-;; (defvar *mesh* (make-instance 'load-mesh :filename "teapot.obj" :draw-type :line-loop))
-;; (defvar *test*  (org.shirakumo.fraf.wavefront:parse #p"~/quicklisp/local-projects/ogl10/monkey.obj"))
-
+(defvar *camera* (make-instance 'camera))
 
 (load-drawing *mesh*)
 
@@ -124,26 +163,20 @@
 	    (fourth *drawing-color*))
   (gl:matrix-mode :projection)
   (gl:load-identity)
-  (glu:perspective 60 (/ *screen-width* *screen-height*) 0.1 500.0))
+  (glu:perspective 60 (/ *screen-width* *screen-height*) 0.1 1000.0))
 
-(defvar *eye* (make-array 3 :initial-contents '(0 0 1)))
-
-(defun init-camera ()  
+(defun camera-init ()
   (gl:matrix-mode :modelview)
   (gl:load-identity)
   (gl:viewport 0 0 *screen-width* *screen-height*) 
   (gl:enable :depth-test)
-  (glu:look-at (aref *eye* 0) (aref *eye* 1) (aref *eye* 2) 0 0 0 0 1 0))
+  (update-camera *camera*))
 
 (defun display ()
   (gl:clear :color-buffer-bit :depth-buffer-bit)
-  (init-camera)
+  (camera-init)
   (gl:push-matrix)
-  (gl:translate 0 0 -4)
-  (draw *mesh*)
-  ;; (gl:load-identity)
-  (gl:scale 0.5 0.5 0.5)
-  (gl:translate -7 -5 -5)
+  (gl:translate 0 0 5)
   (draw *mesh*)
   (gl:pop-matrix))
 
@@ -164,12 +197,10 @@
 			(declare (ignore sym mod-value))
 			(cond
 			  ((sdl2:scancode= scancode :scancode-escape) (sdl2:push-event :quit))
-			  ((sdl2:scancode= scancode :scancode-down) (incf (aref *eye* 2)))
-			  ((sdl2:scancode= scancode :scancode-up) (decf (aref *eye* 2)))
-			  ((sdl2:scancode= scancode :scancode-left) (decf (aref *eye* 0)))
-			  ((sdl2:scancode= scancode :scancode-right) (incf (aref *eye* 0)))
-			  ((sdl2:scancode= scancode :scancode-q) (incf (aref *eye* 1)))
-			  ((sdl2:scancode= scancode :scancode-w) (decf (aref *eye* 1))))))
+			  ((sdl2:scancode= scancode :scancode-up)    (progn (update-data *camera* :up)))
+			  ((sdl2:scancode= scancode :scancode-down)  (progn (update-data *camera* :down)))
+			  ((sdl2:scancode= scancode :scancode-left)  (progn (update-data *camera* :left)))
+			  ((sdl2:scancode= scancode :scancode-right) (progn (update-data *camera* :right))))))
 	    (:idle ()
 		   (display)
 		   (sdl2:gl-swap-window screen)
